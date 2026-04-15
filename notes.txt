@@ -1,0 +1,17 @@
+pydantic_errors = [
+    {'key': [error1, error2, error3]}
+    {'key': [error1, error2, error3]}
+]
+
+pydatic (mode=before) --> recebe a linha e separa:
+ - key
+ - name
+ - x (optional)
+ - y (optional)
+ - metadata (optional)
+
+ pydantic class --> verifica o tipo de variavel
+
+ pydantic (mode=after) --> verificacoes posteriores consoante a key
+
+ o parser verifica linha a linha e adiciona a linha validada ao parsed_data dict
