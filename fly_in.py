@@ -13,12 +13,6 @@ def fly_in() -> None:
     try:
         # Parser
         data = parser()
-    except ValidationError as e:
-        for error in e.errors():
-            if "Value error" in error['msg']:
-                noise, msg = error['msg'].split(", ")
-                error['msg'] = msg
-            print(f"{error['msg']}")
     except ValueError as error:
          print(f"Something went wrong:\n{error}")
 
