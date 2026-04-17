@@ -17,66 +17,89 @@ pydatic (mode=before) --> recebe a linha e separa:
  o parser verifica linha a linha e adiciona a linha validada ao parsed_data dict
 
  parsed_data = {
-    'start': [
-        {
+    'start': {
             'key': start_hub
             'name' = name,
-            'coordenades' = (x, y)
+            'coordinates' = (x, y)
             'metadata' = metadata
-        }
-    ],
-    'end': [
-        {
+        },
+    'end': {
             'key': end_hub
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
-        }
-    ],
+            'coordinates' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
+        },
     'hubs': [
         {
             'key': hub
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         },
         {
             'key': hub
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         },
         {
             'key': hub
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         }
     ],
     'connection': [
         {
             'key': connect
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         },
         {
             'key': connect
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         },
         {
             'key': connect
             'name' = name,
-            'coordenades' = (x, y)
-            'metadata' = metadata
+            'coordinades' = (x, y)
+            'metadata' = {
+                'zone' = zone,
+                'color' = color,
+                'max_drones' = max_drones
+            },
         }
     ]
 }
 
 
 
-Questions:
-- Can BaseModel classes raise ValueError instead of ValidationError?
-- 
+Notes:
+- Check python's traceback

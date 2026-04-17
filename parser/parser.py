@@ -15,20 +15,25 @@ indicating the line and cause. """
 
 import sys
 from pydantic import ValidationError
-from parser import LineParser
+from parser.parser import LineParser, Metas
 
 
 def parser() -> dict[str, str]:
     '''Parse through each line in input and return structured dict with data'''
-    
+
     # Get raw_data from the input file
     config_file = sys.argv[1]
     if not config_file.endswith(".txt"):
-        raise ValueError(f"Input file '{config_file}' must have .txt format")
+        raise FileNotFoundError(f"Input file '{config_file}' "
+                                "must have .txt format")
 
     parsed_data = {}
     with open(config_file, 'r') as file:
+        line_count = 0
         for line in file:
+            # Count line for error reference
+            line_count += 1
+
             # Ignore empty or comment lines
             line = line.strip()
             if not line or line.startswith('#'):
@@ -38,36 +43,34 @@ def parser() -> dict[str, str]:
             if ':' not in line:
                 raise ValueError(f"Formatting error on line '{line}'")
             key, val = line.split(':', 1)
+            key = key.lower()
 
             # nb_drones 
             if not parsed_data:
-                if key.lower() != "nb_drones":
+                if key != "nb_drones":
                     raise ValueError("Input file must start with 'nb_drones'")
                 value = int(val.strip())
                 if not value:
                     raise ValueError(f"{key} value must be an integer")
                 parsed_data[key] = value
-            
+
             # Send all valid keys to pydantic class for validation
             valid_keys = ["start_hub", "end_hub", "hub", "connection"]
             pydantic_errors = {}
             invalid_keys = []
-            if key.lower() in valid_keys:
+            if key in valid_keys:
                 # There can only be one start and end hubs
-                if key.lower == "start_hub":
+                if key == "start_hub":
                     if "start_hub" in parsed_data.keys():
                         raise KeyError(f"There can only be one {key}")
-                if key.lower == "end_hub":
+                if key == "end_hub":
                     if "end_hub" in parsed_data.keys():
                         raise KeyError(f"There can only be one {key}")
 
                 try:
                     # Send lines with valid keys to pydantic validation
                     data = LineParser(line)
-                    
-                    # Add parsed_line to parsed_data
-                    parsed_data[]
-                
+
                 # Append all errors from pydantic validation to a list 
                 except ValidationError as e:
                     value_errors = []
@@ -95,15 +98,49 @@ def parser() -> dict[str, str]:
                 if invalid_keys:
                     all_pyd_errors = f"{all_pyd_errors}\n{invalid_kerrors}"
                 raise ValueError(f"{all_pyd_errors}")
-                
+
+    # Add existing metadata to metadata dict
+    metadata = {}
+    metas = Metas(line)
+    if data.metadata:
+        if metas.zone:
+            metadata['zone'] = metas.zone
+        if metas.color:
+            metadata['color'] = metas.color
+        if metas.color:
+            metadata['max_drones'] = metas.max_drones
+        if metas.color:
+            metadata['max_link_capacity'] = metas.max_link_capacity
+
+    # Add start and end hubs to parsed_data
+    if key == "start_hub" or key == "end_hub":
+        parsed_data[key] = {
+            'name': data.name,
+            'coordinates': (data.x, data.y),
+            'metadata': metadata
+        }
+    # Add hubs and connections to parsed_data
+    else:
+        parsed_data[key].append(
+            {
+                'name': data.name,
+                'coordinates': (data.x, data.y),
+                'metadata': metadata
+            }
+        )
+
     # Start and end hubs must be different
     if parsed_data['start_hub'] == parsed_data['end_hub']:
-        raise ValueError("Entry and Exit coordenates cannot be the same")
+        raise ValueError("start and end hubs cannot have the same coordinates")
 
     # All required keys must have been parsed through
     required_keys = ()
     missing = required_keys - set(parsed_data.keys())
     if missing:
         raise KeyError(f"Missing required configs: '{', '.join(missing)}")
+
+    # Connection names must have known hub names
+    # Hub or connection names cannot be repeated
+    # Coordinates cannot be repeated
 
     return parsed_data

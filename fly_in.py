@@ -1,6 +1,6 @@
 import sys
-from pydantic import ValidationError
-from parser import parser
+from parser.pydantic import ValidationError
+from parser.parser import parser
 
 
 def fly_in() -> None:
@@ -13,7 +13,7 @@ def fly_in() -> None:
     try:
         # Parser
         data = parser()
-    except ValueError as error:
+    except (ValueError, KeyError, TypeError, FileNotFoundError) as error:
          print(f"Something went wrong:\n{error}")
 
 
