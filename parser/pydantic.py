@@ -13,20 +13,22 @@ class Zone(Enum):
 class Metas(BaseModel):
     color: Optional[str] = Field(default=True)
     zone: Optional[Zone] = Field(default="normal")
-    max_drones: Optional[int] = Field(default=1)
-    max_link_capacity: Optional[int] = Field(default=1)
+    max_drones: Optional[int] = Field(default=1, gt=0)
+    max_link_capacity: Optional[int] = Field(default=1, gt=0)
 
     @field_validator('color', mode="after")
     def color_validator(self):
         '''Post-pydantic validations for color'''
-        # Check if value is a color
-        # Accepted values for color are any valid single-word strings
-        # (e.g., red, blue, gray). There is no fixed list of allowed colors :'(
-        valid_colors = ["white", "black", "blue", "red", "yellow",
-                        "green", "orange", "purple", "pink", "grey"]
-        if self.color not in valid_colors:
-            raise ValueError(f"{self.color} is not a valid color "
-                             f"(Valid colors: {", ".join(valid_colors)})")
+        # Check if value is a single word
+        if not self.color.isalpha():
+            raise ValueError(f"'{self.color}' must be a single word")
+
+    @field_validator('zone', mode="after")
+    def zone_validator(self):
+        '''Post-pydantic validation for zone'''
+        # Zone names can use any valid characters but dashes and spaces
+        if " " in self.zone or "_" in self.zone:
+            raise ValueError("Zone names must not have spaces or dashes")
 
 
 class LineParser(BaseModel):
@@ -102,7 +104,7 @@ class LineParser(BaseModel):
         metas: list = metadata.split()
         for m in metas:
             if "=" not in m:
-                raise ValueError("Invalid format")
+                raise ValueError("Invalid metadata format")
             key, val = m.split("=", 1)
             metadict[key] = val
 
@@ -115,30 +117,33 @@ class LineParser(BaseModel):
 
         # Start and end hubs don't have max_drones or zone
         if self.key == "start_hub" or self.key == "end_hub":
-            self.metadata
+            if any('zone', 'max_drones', 'max_link_capacity')\
+                    in self.metadata.keys():
+                errors.append(f"Invalid metadata for {self.key}")
 
+        # Connection metadata validation
         if self.key == "connection":
-            # Connection metadata validation
             if self.x or self.y:
-                raise ValueError("Connections don't have coordinates")
+                errors.append("Connections don't have coordinates")
             if self.metadata['zone'] or self.metadata['max_drones']:
             # if any('zone', 'max_drones') in self.metadata.keys()
-                raise ValueError("Connections cannot have 'zone' "
-                                 "or 'max_drones' metadata")
+                errors.append("Connections cannot have 'zone' "
+                              "or 'max_drones' metadata")
             
             # Connection syntax forbids dashes; <name>-<name>
             if "_" in self.name:
-                raise ValueError("Connection names cannot have dashes "
-                                 f"in {self.name}")
+                errors.append("Connection names cannot have dashes "
+                              f"in {self.name}")
             if "-" not in self.name:
-                raise ValueError("Connection names must have '-' "
-                                 "separating hub names")
+                errors.append("Connection names must have '-' "
+                              "separating hub names")
 
         # Hubs metadata validation
         if self.key == "hub":
             if self.metadata['max_link_capacity']:
-                raise ValueError("Hubs cannot have a max_link_capacity")
+                errors.append("Hubs cannot have a max_link_capacity")
 
         if errors:
             raise ValueError("\n".join(errors))
+
         return self

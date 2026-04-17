@@ -13,6 +13,7 @@ install:
 	python3 -m venv venv
 	$(PIP_INSTALL) --upgrade pip
 	$(PIP_INSTALL) pydantic
+	$(PIP_INSTALL) pygame
 	$(PIP_INSTALL) flake8
 	$(PIP_INSTALL) mypy
 

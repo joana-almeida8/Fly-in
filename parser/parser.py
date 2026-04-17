@@ -1,15 +1,10 @@
 """ The input file must respect the expected structure and syntax:
 • Each zone must have a unique name and valid integer coordinates.
-• Zone names can use any valid characters but dashes and spaces.
 • Connections must link only previously defined zones using connection: <zone1>-<zone2>
 [metadata].
 • The same connection must not appear more than once (e.g., a-b and b-a are considered duplicates).
 • Any metadata block (e.g., [zone=... color=...] for zones, [max_link_capacity=...]
 for connections) must be syntactically valid.
-• Zone types must be one of: normal, blocked, restricted, priority. Any invalid
-type must raise a parsing error.
-• Capacity values (max_drones for zones, max_link_capacity for connections) must
-be positive integers.
 • Any other parsing error must stop the program and return a clear error message
 indicating the line and cause. """
 
@@ -18,7 +13,7 @@ from pydantic import ValidationError
 from parser.parser import LineParser, Metas
 
 
-def parser() -> dict[str, str]:
+def raw_parser() -> dict[str, str]:
     '''Parse through each line in input and return structured dict with data'''
 
     # Get raw_data from the input file
@@ -142,5 +137,6 @@ def parser() -> dict[str, str]:
     # Connection names must have known hub names
     # Hub or connection names cannot be repeated
     # Coordinates cannot be repeated
+    # The same connection must not appear more than once (e.g., a-b and b-a are considered duplicates)
 
     return parsed_data
