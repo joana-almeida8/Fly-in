@@ -1,13 +1,3 @@
-""" The input file must respect the expected structure and syntax:
-• Each zone must have a unique name and valid integer coordinates.
-• Connections must link only previously defined zones using connection: <zone1>-<zone2>
-[metadata].
-• The same connection must not appear more than once (e.g., a-b and b-a are considered duplicates).
-• Any metadata block (e.g., [zone=... color=...] for zones, [max_link_capacity=...]
-for connections) must be syntactically valid.
-• Any other parsing error must stop the program and return a clear error message
-indicating the line and cause. """
-
 import sys
 from pydantic import ValidationError
 from .pydantics import LineParser, Metas
@@ -36,7 +26,7 @@ def raw_parser() -> dict[str, str]:
 
             # Split keys and values by ':'
             if ':' not in line:
-                raise ValueError(f"Formatting error on line '{line}'")
+                raise ValueError(f"Formatting error on line {line_count}: '{line}'")
             key, val = line.split(':', 1)
             key = key.lower()
 
@@ -45,7 +35,7 @@ def raw_parser() -> dict[str, str]:
                 if key != "nb_drones":
                     raise ValueError("Input file must start with 'nb_drones'")
                 value = int(val.strip())
-                if not value:
+                if value is None:
                     raise ValueError(f"{key} value must be an integer")
                 parsed_data[key] = value
 
@@ -86,7 +76,7 @@ def raw_parser() -> dict[str, str]:
             if pydantic_errors:
                 e_msgs = []
                 for error_dict in pydantic_errors:
-                    for e_key, e_vals in error_dict:
+                    for e_key, e_vals in error_dict.items():
                         e_values = f"{', '.join(v for v in e_vals)}"
                         e_msgs.append(f"{e_key}: {e_values}")
                 all_pyd_errors = f"{"\n".join(e_msgs)}"
@@ -125,31 +115,41 @@ def raw_parser() -> dict[str, str]:
                 )
 
     # Start and end hubs must be different
-    if parsed_data['start_hub'] == parsed_data['end_hub']:
+    if parsed_data['start_hub']['coordinate'] == parsed_data['end_hub']['coordinate']:
         raise ValueError("start and end hubs cannot have the same coordinates")
 
     # All required keys must have been parsed through
-    required_keys = ()
+    required_keys = ("nb_drones", "start_hub", "end_hub", "connection", "hub")
     missing = required_keys - set(parsed_data.keys())
     if missing:
         raise KeyError(f"Missing required configs: '{', '.join(missing)}")
 
     # Names cannot be repeated
-    names = [n['name'] for n in parsed_data['connection'] + parsed_data['hub']]
-    names.append(parsed_data['start']['name'],
-                 parsed_data['end']['name'])
-    if len(names) != set(names):
+    con_names = [n['name'] for n in parsed_data['connection']['name']]
+    hub_names = [n['name'] for n in parsed_data['hub']['name']] + \
+                [parsed_data['start']['name'], parsed_data['end']['name']]
+    all_names = con_names + hub_names
+    if len(all_names) != set(all_names):
         raise ValueError("Hubs and Connections cannot have repeated names")
     
     # Coordinates cannot be repeated
-    coords = [c['coordinates'] for c in parsed_data['hub']]
-    coords.append(parsed_data['start']['coordinates'],
-                  parsed_data['end']['coordinates'])
-    if len(coords) != set(coords):
+    coords = [c['coordinates'] for c in parsed_data['hub']['coordinates']] + \
+             [parsed_data['start']['coordinates'], parsed_data['end']['coordinates']]
+    if len(coords) != len(set(coords)):
         raise ValueError("Hubs cannot have repeated coordinates")
 
-
     # Connection names must have known hub names
-    # The same connection must not appear more than once (e.g., a-b and b-a are considered duplicates)
+    sorted_names = []
+    for name in con_names:
+        parts = name.split("-")
+        if not all(n in all_names for n in parts):
+            raise ValueError(f"Connection {name} references unknown hub")
+
+        # The same connection must not appear more than once
+        parts.sort()
+        sorted_names.append(tuple(parts))
+
+    if len(con_names) != len(set(sorted_names)):
+        raise ValueError("There cannot be duplicate connections")
 
     return parsed_data
