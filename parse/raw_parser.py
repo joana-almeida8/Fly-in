@@ -10,7 +10,7 @@ indicating the line and cause. """
 
 import sys
 from pydantic import ValidationError
-from parser.parser import LineParser, Metas
+from .pydantics import LineParser, Metas
 
 
 def raw_parser() -> dict[str, str]:
@@ -94,35 +94,35 @@ def raw_parser() -> dict[str, str]:
                     all_pyd_errors = f"{all_pyd_errors}\n{invalid_kerrors}"
                 raise ValueError(f"{all_pyd_errors}")
 
-    # Add existing metadata to metadata dict
-    metadata = {}
-    metas = Metas(line)
-    if data.metadata:
-        if metas.zone:
-            metadata['zone'] = metas.zone
-        if metas.color:
-            metadata['color'] = metas.color
-        if metas.color:
-            metadata['max_drones'] = metas.max_drones
-        if metas.color:
-            metadata['max_link_capacity'] = metas.max_link_capacity
+            # Add existing metadata to metadata dict
+            metadata = {}
+            metas = Metas(line)
+            if data.metadata:
+                if metas.zone:
+                    metadata['zone'] = metas.zone
+                if metas.color:
+                    metadata['color'] = metas.color
+                if metas.color:
+                    metadata['max_drones'] = metas.max_drones
+                if metas.color:
+                    metadata['max_link_capacity'] = metas.max_link_capacity
 
-    # Add start and end hubs to parsed_data
-    if key == "start_hub" or key == "end_hub":
-        parsed_data[key] = {
-            'name': data.name,
-            'coordinates': (data.x, data.y),
-            'metadata': metadata
-        }
-    # Add hubs and connections to parsed_data
-    else:
-        parsed_data[key].append(
-            {
-                'name': data.name,
-                'coordinates': (data.x, data.y),
-                'metadata': metadata
-            }
-        )
+            # Add start and end hubs to parsed_data
+            if key == "start_hub" or key == "end_hub":
+                parsed_data[key] = {
+                    'name': data.name,
+                    'coordinates': (data.x, data.y),
+                    'metadata': metadata
+                }
+            # Add hubs and connections to parsed_data
+            else:
+                parsed_data[key].append(
+                    {
+                        'name': data.name,
+                        'coordinates': (data.x, data.y),
+                        'metadata': metadata
+                    }
+                )
 
     # Start and end hubs must be different
     if parsed_data['start_hub'] == parsed_data['end_hub']:
@@ -134,9 +134,22 @@ def raw_parser() -> dict[str, str]:
     if missing:
         raise KeyError(f"Missing required configs: '{', '.join(missing)}")
 
-    # Connection names must have known hub names
-    # Hub or connection names cannot be repeated
+    # Names cannot be repeated
+    names = [n['name'] for n in parsed_data['connection'] + parsed_data['hub']]
+    names.append(parsed_data['start']['name'],
+                 parsed_data['end']['name'])
+    if len(names) != set(names):
+        raise ValueError("Hubs and Connections cannot have repeated names")
+    
     # Coordinates cannot be repeated
+    coords = [c['coordinates'] for c in parsed_data['hub']]
+    coords.append(parsed_data['start']['coordinates'],
+                  parsed_data['end']['coordinates'])
+    if len(coords) != set(coords):
+        raise ValueError("Hubs cannot have repeated coordinates")
+
+
+    # Connection names must have known hub names
     # The same connection must not appear more than once (e.g., a-b and b-a are considered duplicates)
 
     return parsed_data

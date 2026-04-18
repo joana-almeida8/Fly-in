@@ -1,5 +1,5 @@
-PIP_INSTALL = fly_in/bin/pip install
-PYTHON = fly_in/bin/python
+PIP_INSTALL = venv/bin/pip install
+PYTHON = venv/bin/python
 
 RM = rm -rf
 
@@ -24,11 +24,8 @@ debug:
 	$(PYTHON) -m pdb fly_in.py config.txt
 
 clean:
-	$(RM) src/__pycache__
-	$(RM) src/algorithms/__pycache__
-	$(RM) src/maze/__pycache__
-	$(RM) src/output/__pycache__
-	$(RM) src/parse/__pycache__
+	$(RM) __pycache__
+	$(RM) parse/__pycache__
 	$(RM) .mypy_cache
 
 lint:

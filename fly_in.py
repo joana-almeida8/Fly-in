@@ -1,5 +1,5 @@
 import sys
-from parser.parser import raw_parser
+from parser.raw_parser import raw_parser
 
 
 def fly_in() -> None:
@@ -9,8 +9,8 @@ def fly_in() -> None:
     elif len(sys.argv) > 2:
         print("Too many arguments")
 
+    # Parser
     try:
-        # Parser
         data = raw_parser()
     except (ValueError, KeyError, TypeError, FileNotFoundError) as error:
          print(f"Something went wrong:\n{error}")
