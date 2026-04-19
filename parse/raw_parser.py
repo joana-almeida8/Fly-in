@@ -13,6 +13,8 @@ def raw_parser() -> dict[str, str]:
                                 "must have .txt format")
 
     parsed_data = {}
+    invalid_keys = []
+    pydantic_errors = {}
     with open(config_file, 'r') as file:
         line_count = 0
         for line in file:
@@ -30,7 +32,7 @@ def raw_parser() -> dict[str, str]:
             key, val = line.split(':', 1)
             key = key.lower()
 
-            # nb_drones 
+            # nb_drones must be added first
             if not parsed_data:
                 if key != "nb_drones":
                     raise ValueError("Input file must start with 'nb_drones'")
@@ -38,85 +40,92 @@ def raw_parser() -> dict[str, str]:
                 if value is None:
                     raise ValueError(f"{key} value must be an integer")
                 parsed_data[key] = value
+                continue
 
-            # Send all valid keys to pydantic class for validation
+            # Append all invalid keys
             valid_keys = ["start_hub", "end_hub", "hub", "connection"]
-            pydantic_errors = {}
-            invalid_keys = []
-            if key in valid_keys:
-                # There can only be one start and end hubs
-                if key == "start_hub":
-                    if "start_hub" in parsed_data.keys():
-                        raise KeyError(f"There can only be one {key}")
-                if key == "end_hub":
-                    if "end_hub" in parsed_data.keys():
-                        raise KeyError(f"There can only be one {key}")
+            if key not in valid_keys:
+                if not invalid_keys:
+                    invalid_keys.append("\nUnknown instructions detected:")
+                invalid_keys.append(f" - [Line {line_count}]: '{key}'")
+                continue
 
-                try:
-                    # Send lines with valid keys to pydantic validation
-                    data = LineParser(line)
+            # There can only be one start and end hub
+            if key in ["start_hub", "end_hub"] and key in parsed_data:
+                raise KeyError(f"[Line {line_count}]: "
+                               f"There can only be one '{key}'")
 
-                # Append all errors from pydantic validation to a list 
-                except ValidationError as e:
-                    value_errors = []
-                    for error in e.errors():
-                        if "Value error" in error['msg']:
-                            noise, msg = error['msg'].split(", ")
-                            error['msg'] = msg
-                        value_errors.append(error)
-                    pydantic_errors['key'] = value_errors
+            try:
+                # Send lines with valid keys to pydantic validation
+                data = LineParser(line)
 
-            # Append invalid keys errors to invalid_kerrors
-            else:
-                invalid_keys.append(key)
-            if invalid_keys:
-                invalid_kerrors = f"Invalid key(s): {", ".join(invalid_keys)}"
+                # Add existing metadata to metadata dict
+                metadata = {}
+                metas = Metas(line)
+                if data.metadata:
+                    if metas.zone:
+                        metadata['zone'] = metas.zone
+                    if metas.color:
+                        metadata['color'] = metas.color
+                    if metas.max_drones:
+                        metadata['max_drones'] = metas.max_drones
+                    if metas.max_link_capacity:
+                        metadata['max_link_capacity'] = metas.max_link_capacity
 
-            # Raise any errors from pydantic validation 
-            if pydantic_errors:
-                e_msgs = []
-                for error_dict in pydantic_errors:
-                    for e_key, e_vals in error_dict.items():
-                        e_values = f"{', '.join(v for v in e_vals)}"
-                        e_msgs.append(f"{e_key}: {e_values}")
-                all_pyd_errors = f"{"\n".join(e_msgs)}"
-                if invalid_keys:
-                    all_pyd_errors = f"{all_pyd_errors}\n{invalid_kerrors}"
-                raise ValueError(f"{all_pyd_errors}")
-
-            # Add existing metadata to metadata dict
-            metadata = {}
-            metas = Metas(line)
-            if data.metadata:
-                if metas.zone:
-                    metadata['zone'] = metas.zone
-                if metas.color:
-                    metadata['color'] = metas.color
-                if metas.color:
-                    metadata['max_drones'] = metas.max_drones
-                if metas.color:
-                    metadata['max_link_capacity'] = metas.max_link_capacity
-
-            # Add start and end hubs to parsed_data
-            if key == "start_hub" or key == "end_hub":
-                parsed_data[key] = {
-                    'name': data.name,
-                    'coordinates': (data.x, data.y),
-                    'metadata': metadata
-                }
-            # Add hubs and connections to parsed_data
-            else:
-                parsed_data[key].append(
-                    {
+                # Add start and end hubs to parsed_data
+                if key == "start_hub" or key == "end_hub":
+                    parsed_data[key] = {
                         'name': data.name,
                         'coordinates': (data.x, data.y),
                         'metadata': metadata
                     }
-                )
+                # Add hubs and connections to parsed_data
+                else:
+                    # Add hub and connection structure to parsed data
+                    if (key == "hub" and key not in parsed_data) or \
+                        (key == "connection" and key not in parsed_data):
+                        parsed_data.setdefault(key, []).append(parsed_data)
+                    
+                    # Append hub info
+                    if key == "hub":
+                        parsed_data[key].append(
+                            {
+                                'name': data.name,
+                                'coordinates': (data.x, data.y),
+                                'metadata': metadata
+                            }
+                        )
+                    # Append connection info
+                    elif key == "connection":
+                        parsed_data[key].append(
+                            {
+                                'name': data.name,
+                                'metadata': metadata
+                            }
+                        )
 
-    # Start and end hubs must be different
-    if parsed_data['start_hub']['coordinate'] == parsed_data['end_hub']['coordinate']:
-        raise ValueError("start and end hubs cannot have the same coordinates")
+            # Append all errors from pydantic validation to a list 
+            except ValidationError as e:
+                value_errors = []
+                for error in e.errors():
+                    if "Value error" in error['msg']:
+                        value_errors.append("Parsing error detected:")
+                        noise, msg = error['msg'].split(", ")
+                        error['msg'] = f" - [Line {line_count}]: {msg}"
+                    error['msg'] = f" - [Line {line_count}]: {msg}"
+                    value_errors.append(error['msg'])
+                    pydantic_errors['key'] = value_errors
+
+    # Raise any errors from pydantic validation 
+    if pydantic_errors or invalid_keys:
+        error_msgs = []
+        for e_key, e_vals in pydantic_errors.items():
+            e_values = f"{'\n'.join(v for v in e_vals)}"
+            error_msgs.append(f"{e_key}:\n{e_values}")
+        all_pyd_errors = f"{"\n".join(error_msgs)}"
+        if invalid_keys:
+            all_pyd_errors = f"{all_pyd_errors}\n\n{"\n".join(invalid_keys)}"
+        raise ValueError(f"{all_pyd_errors}")
 
     # All required keys must have been parsed through
     required_keys = ("nb_drones", "start_hub", "end_hub", "connection", "hub")
@@ -125,31 +134,31 @@ def raw_parser() -> dict[str, str]:
         raise KeyError(f"Missing required configs: '{', '.join(missing)}")
 
     # Names cannot be repeated
-    con_names = [n['name'] for n in parsed_data['connection']['name']]
-    hub_names = [n['name'] for n in parsed_data['hub']['name']] + \
+    con_names = [n['name'] for n in parsed_data.get('connection', [])]
+    hub_names = [n['name'] for n in parsed_data.get('hub', [])] + \
                 [parsed_data['start']['name'], parsed_data['end']['name']]
     all_names = con_names + hub_names
-    if len(all_names) != set(all_names):
+    if len(all_names) != len(set(all_names)):
         raise ValueError("Hubs and Connections cannot have repeated names")
-    
+
     # Coordinates cannot be repeated
-    coords = [c['coordinates'] for c in parsed_data['hub']['coordinates']] + \
-             [parsed_data['start']['coordinates'], parsed_data['end']['coordinates']]
+    coords = [c['coordinates'] for c in parsed_data.get('hub', [])] + \
+             [parsed_data['start_hub']['coordinates'],
+              parsed_data['end_hub']['coordinates']]
     if len(coords) != len(set(coords)):
         raise ValueError("Hubs cannot have repeated coordinates")
 
     # Connection names must have known hub names
-    sorted_names = []
+    sorted_names = set()
     for name in con_names:
         parts = name.split("-")
-        if not all(n in all_names for n in parts):
+        if not all(n in hub_names for n in parts):
             raise ValueError(f"Connection {name} references unknown hub")
 
         # The same connection must not appear more than once
-        parts.sort()
-        sorted_names.append(tuple(parts))
-
-    if len(con_names) != len(set(sorted_names)):
-        raise ValueError("There cannot be duplicate connections")
+        pair = tuple(sorted(parts))
+        if pair in sorted_names:
+            raise ValueError(f"There cannot be duplicate connections: {name}")
+        sorted_names.add(pair)
 
     return parsed_data

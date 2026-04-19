@@ -11,136 +11,141 @@ class Zone(Enum):
 
 
 class Metas(BaseModel):
-    color: Optional[str] = Field(default=True)
-    zone: Optional[Zone] = Field(default="normal")
+    color: Optional[str] = Field(default="black")
+    zone: Optional[Zone] = Field(default=Zone.NORMAL)
     max_drones: Optional[int] = Field(default=1, gt=0)
     max_link_capacity: Optional[int] = Field(default=1, gt=0)
 
     @field_validator('color', mode="after")
-    def color_validator(self):
+    @classmethod
+    def color_validator(cls, color: str) -> str:
         '''Post-pydantic validations for color'''
         # Check if value is a single word
-        if not self.color.isalpha():
-            raise ValueError(f"'{self.color}' must be a single word")
+        if not color.isalpha():
+            raise ValueError(f"'{color}' must be a single word (letters only)")
+        
+        return color
 
     @field_validator('zone', mode="after")
-    def zone_validator(self):
+    @classmethod
+    def zone_validator(cls, zone: Zone) -> Zone:
         '''Post-pydantic validation for zone'''
         # Zone names can use any valid characters but dashes and spaces
-        if " " in self.zone or "_" in self.zone:
-            raise ValueError("Zone names must not have spaces or dashes")
+        if " " in zone.value or "_" in zone.value:
+            raise ValueError(f"{zone.value} name must not have spaces/dashes")
+
+        return zone
 
 
 class LineParser(BaseModel):
     key: str
     name: str
-    x: Optional[int]
-    y: Optional[int]
-    metadata: Optional[dict[Metas]]
+    x: Optional[int] = None
+    y: Optional[int] = None
+    metadata: Optional[Metas] = None
 
     @model_validator(mode="before")
     @classmethod
-    def parse_to_dict(cls, line: str) -> dict:
+    def parse_to_dict(cls, line: Any) -> dict:
         '''Get line from input file and transform it into a raw_data dict'''
+
+        if not isinstance(line, str):
+            return line
+
         # Split keys and values by ':'
         if ':' not in line:
             raise ValueError(f"Formatting error on line '{line}'")
+
         l_key, l_val = line.split(':', 1)
+        l_key = l_key.lower().strip()
+        l_val = l_val.strip()
 
         # Raise error if val is missing
         if not l_val:
-            raise TypeError(f"{l_key} has missing values")
+            raise ValueError(f"{l_key} has missing values")
+
+        parts = l_val.split()
+
+        # If metadata exists, remove it and add it to metadata_str
+        metadata_str = None
+        if parts and parts[-1].startswith("["):
+            metadata_str = parts.pop()
 
         # Split values of key 'connection'
         if l_key == "connection":
-            if " " in l_val:
-                l_name, l_metadata = l_val.split(' ')
-                return {
-                    "key": l_key,
-                    "name": l_name,
-                    "metadata": l_metadata
-                }
-            # Metadata is optional
+            if len(parts) != 1:
+                raise ValueError("Connections cannot have coordinates")
             return {
                 "key": l_key,
-                "name": l_name,
+                "name": parts[0],
+                "metadata": metadata_str
             }
 
-        # Split values of other keys
-        if "[" in l_val:
-            l_name, l_x, l_y, l_metadata = l_val.split(' ')
-            return {
-                "key": l_key,
-                "name": l_name,
-                "x": l_x,
-                "y": l_y,
-                "metadata": l_metadata
-            }
-        # Metadata is optional
-        else:
-            l_name, l_x, l_y = l_val.split(' ')
-            return {
-                "key": l_key,
-                "name": l_name,
-                "x": l_x,
-                "y": l_y,
-            }
+        # Return hubs values
+        if len(parts) < 3:
+            raise ValueError("Hubs require name and coordinates")
+        return {
+            "key": l_key,
+            "name": parts[0],
+            "x": parts[1],
+            "y": parts[2],
+            "metadata": metadata_str
+        }
 
     @field_validator('metadata', mode="before")
     @classmethod
-    def metas_to_dict(cls, metadata: str) -> Any[None, dict]:
+    def metas_to_dict(cls, metadata: Any) -> Optional[dict]:
         '''Transform metadata str into a dict'''
         # Metadata is optional so return may be none
-        if not metadata:
+        if not metadata or not isinstance(metadata, str):
             return
 
         # Validate format and remove []
         if not (metadata.startswith('[') and metadata.endswith(']')):
             raise ValueError(f"Metadata must be inside '[]' brackets")
-        metadata = metadata.strip('[]', 1)
+        metadata = metadata.strip('[]')
 
         # Add each meta to metadict
         metadict = {}
-        metas: list = metadata.split()
-        for m in metas:
+        for m in metadata.split():
             if "=" not in m:
-                raise ValueError("Invalid metadata format")
+                raise ValueError(f"Invalid metadata format in '{m}'")
             key, val = m.split("=", 1)
             metadict[key] = val
-
         return metadict
 
     @model_validator(mode="after")
-    def validator(self):
+    def post_validator(self) -> 'LineParser':
         '''Post-pydantic validations for each data instruction'''
+        m = self.metadata
         errors = []
 
         # Start and end hubs don't have max_drones or zone
-        if self.key == "start_hub" or self.key == "end_hub":
-            if any('zone', 'max_drones', 'max_link_capacity')\
-                    in self.metadata.keys():
-                errors.append(f"Invalid metadata for {self.key}")
+        if self.key in ["start_hub", "end_hub"]:
+            if m and (m.zone != Zone.NORMAL or\
+                      m.max_drones != 1 or\
+                      m.max_link_capacity != 1):
+                errors.append(f"{self.key} only supports 'color' metadata")
 
         # Connection metadata validation
-        if self.key == "connection":
-            if self.x or self.y:
-                errors.append("Connections don't have coordinates")
-            if self.metadata['zone'] or self.metadata['max_drones']:
-            # if any('zone', 'max_drones') in self.metadata.keys()
+        elif self.key == "connection":
+            if m and (self.x or self.y):
+                errors.append("Connections cannot have coordinates")
+            if m and (m.zone != Zone.NORMAL or m.max_drones != 1):
                 errors.append("Connections cannot have 'zone' "
                               "or 'max_drones' metadata")
-            
+
             # Connection syntax forbids dashes; <name>-<name>
             if "_" in self.name:
                 errors.append("Connection names cannot have dashes "
-                              f"in {self.name}")
+                              f"in '{self.name}'")
             if "-" not in self.name:
                 errors.append("Connection names must have '-' "
                               "separating hub names")
 
         # Hubs metadata validation
-        if self.key == "hub":
-            if self.metadata['max_link_capacity']:
+        elif self.key == "hub":
+            if m and m.max_link_capacity != 1:
                 errors.append("Hubs cannot have a max_link_capacity")
 
         if errors:
