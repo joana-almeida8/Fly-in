@@ -11,10 +11,10 @@ def fly_in() -> None:
 
     # Parser
     try:
-        data = raw_parser()
+        data = raw_parser(sys.argv[1])
     except (ValueError, KeyError, TypeError, FileNotFoundError) as error:
-         print(f"Something went wrong:\n{error}")
-
+        print(f"\nParsing error(s) detected:\n{error}\n")
+        sys.exit(1)
 
 if __name__ == "__main__":
     fly_in()

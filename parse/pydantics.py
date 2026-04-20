@@ -40,8 +40,8 @@ class Metas(BaseModel):
 class LineParser(BaseModel):
     key: str
     name: str
-    x: Optional[int] = None
-    y: Optional[int] = None
+    x: Optional[int] = Field(default=None, ge=0)
+    y: Optional[int] = Field(default=None, ge=0)
     metadata: Optional[Metas] = None
 
     @model_validator(mode="before")
@@ -82,8 +82,8 @@ class LineParser(BaseModel):
             }
 
         # Return hubs values
-        if len(parts) < 3:
-            raise ValueError("Hubs require name and coordinates")
+        if len(parts) != 3:
+            raise ValueError("Hubs require name and two coordinates")
         return {
             "key": l_key,
             "name": parts[0],
@@ -111,6 +111,8 @@ class LineParser(BaseModel):
             if "=" not in m:
                 raise ValueError(f"Invalid metadata format in '{m}'")
             key, val = m.split("=", 1)
+            if key not in ["color", "zone", "max_drones", "max_link_capacity"]:
+                raise ValueError(f"Unknown metadata detected: '{key}'")
             metadict[key] = val
         return metadict
 
