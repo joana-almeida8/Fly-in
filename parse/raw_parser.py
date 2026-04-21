@@ -1,4 +1,3 @@
-import sys
 from pydantic import ValidationError
 from .pydantics import LineParser
 
@@ -28,7 +27,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
 
             # Split keys and values by ':'
             if ':' not in line:
-                pydantic_errors.append((line_count, f"Invalid format, "
+                pydantic_errors.append((line_count, "Invalid format, "
                                        "missing ':'"))
                 continue
 
@@ -37,8 +36,8 @@ def raw_parser(config_file: str) -> dict[str, str]:
 
             # nb_drones must be added first
             if "nb_drones" not in parsed_data:
-                if key != "nb_drones" and nb_drones_msg == False:
-                    pydantic_errors.append((line_count, f"Input file must "
+                if key != "nb_drones" and not nb_drones_msg:
+                    pydantic_errors.append((line_count, "Input file must "
                                            "start with 'nb_drones'"))
                     nb_drones_msg = True
                 if key == "nb_drones":
@@ -84,9 +83,9 @@ def raw_parser(config_file: str) -> dict[str, str]:
                 else:
                     # Add hub and connection structure to parsed data
                     if (key == "hub" and key not in parsed_data) or \
-                        (key == "connection" and key not in parsed_data):
+                            (key == "connection" and key not in parsed_data):
                         parsed_data.setdefault(key, [])
-                    
+
                     # Append hub info
                     if key == "hub":
                         parsed_data[key].append(
@@ -107,27 +106,27 @@ def raw_parser(config_file: str) -> dict[str, str]:
                             }
                         )
 
-            # Append all errors from pydantic validation to a list 
+            # Append all errors from pydantic validation to a list
             except ValidationError as e:
                 for error in e.errors():
                     if ", " in error['msg']:
                         noise, msg = error['msg'].split(", ")
                         error['msg'] = msg
-                    error['msg'] = msg
                     pydantic_errors.append((line_count, error['msg']))
 
     # Raise any errors from pydantic validation
     all_pyd_errors = []
     if pydantic_errors:
         pydantic_errors.sort()
-        all_pyd_errors.extend([f" - Line {l_count}: {msg}"\
+        all_pyd_errors.extend([f" - Line {l_count}: {msg}"
                                for l_count, msg in pydantic_errors])
     if invalid_keys:
         if all_pyd_errors:
             all_pyd_errors.append("\n")
         all_pyd_errors.extend(invalid_keys)
     if all_pyd_errors:
-        raise ValueError(f"{"\n".join(all_pyd_errors)}")
+        formatted_errors = '\n'.join(all_pyd_errors)
+        raise ValueError(f"{formatted_errors}")
 
     # All required keys must have been parsed through
     required_keys = ("nb_drones", "start_hub", "end_hub", "connection", "hub")
@@ -139,7 +138,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
     # List every dict instruction in parsed_data together for post-validations
     post_errors = []
     parsed_items = [
-        *[parsed_data[item] for item in ["start_hub", "end_hub"]\
+        *[parsed_data[item] for item in ["start_hub", "end_hub"]
           if item in parsed_data],
         *parsed_data.get("hub", []),
         *parsed_data.get("connection", [])
@@ -184,7 +183,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
     # Coordinates cannot be repeated
     checked_coords = {}
     coord_sources = [
-        *[parsed_data[item] for item in ["start_hub", "end_hub"]\
+        *[parsed_data[item] for item in ["start_hub", "end_hub"]
           if item in parsed_data],
         *parsed_data.get("hub", [])
         ]
@@ -197,11 +196,12 @@ def raw_parser(config_file: str) -> dict[str, str]:
         else:
             checked_coords[coord] = line
 
-    # Raise post pydantic errors 
+    # Raise post pydantic errors
     if post_errors:
         post_errors.sort()
-        post_error_msgs = [f" - Line {l_count}: {msg}"\
+        post_error_msgs = [f" - Line {l_count}: {msg}"
                            for l_count, msg in post_errors]
-        raise ValueError(f"{"\n".join(post_error_msgs)}")
+        formatted_post_errors = '\n'.join(post_error_msgs)
+        raise ValueError(f"{formatted_post_errors}")
 
     return parsed_data

@@ -23,7 +23,7 @@ class Metas(BaseModel):
         # Check if value is a single word
         if not color.isalpha():
             raise ValueError(f"'{color}' must be a single word (letters only)")
-        
+
         return color
 
     @field_validator('zone', mode="after")
@@ -102,7 +102,7 @@ class LineParser(BaseModel):
 
         # Validate format and remove []
         if not (metadata.startswith('[') and metadata.endswith(']')):
-            raise ValueError(f"Metadata must be inside '[]' brackets")
+            raise ValueError("Metadata must be inside '[]' brackets")
         metadata = metadata.strip('[]')
 
         # Add each meta to metadict
@@ -124,8 +124,8 @@ class LineParser(BaseModel):
 
         # Start and end hubs don't have max_drones or zone
         if self.key in ["start_hub", "end_hub"]:
-            if m and (m.zone != Zone.NORMAL or\
-                      m.max_drones != 1 or\
+            if m and (m.zone != Zone.NORMAL or
+                      m.max_drones != 1 or
                       m.max_link_capacity != 1):
                 errors.append(f"{self.key} only supports 'color' metadata")
 
