@@ -11,7 +11,7 @@ class Zone(Enum):
 
 
 class Metas(BaseModel):
-    color: Optional[str] = Field(default="black")
+    color: Optional[str] = Field(default="white")
     zone: Optional[Zone] = Field(default=Zone.NORMAL)
     max_drones: Optional[int] = Field(default=1, gt=0)
     max_link_capacity: Optional[int] = Field(default=1, gt=0)
@@ -64,7 +64,7 @@ class LineParser(BaseModel):
         if not l_val:
             raise ValueError(f"{l_key} has missing values")
 
-        parts = l_val.split()
+        parts = l_val.split(None, 3)
 
         # If metadata exists, remove it and add it to metadata_str
         metadata_str = None
@@ -113,6 +113,8 @@ class LineParser(BaseModel):
             key, val = m.split("=", 1)
             if key not in ["color", "zone", "max_drones", "max_link_capacity"]:
                 raise ValueError(f"Unknown metadata detected: '{key}'")
+            if key in metadict:
+                raise ValueError("Metadata cannot have duplicate instructions")
             metadict[key] = val
         return metadict
 
