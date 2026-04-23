@@ -127,9 +127,14 @@ class LineParser(BaseModel):
         # Start and end hubs don't have max_drones or zone
         if self.key in ["start_hub", "end_hub"]:
             if m and (m.zone != Zone.NORMAL or
-                      m.max_drones != 1 or
                       m.max_link_capacity != 1):
-                errors.append(f"{self.key} only supports 'color' metadata")
+                errors.append(f"{self.key} only supports 'color' or "
+                              "'max_drones' metadata")
+
+        # Hubs name syntax
+        if self.key in ["start_hub", "end_hub", "hub"]:
+            if "-" in self.name:
+                errors.append("Hub names cannot have dashes")
 
         # Connection metadata validation
         elif self.key == "connection":
@@ -140,9 +145,6 @@ class LineParser(BaseModel):
                               "or 'max_drones' metadata")
 
             # Connection syntax forbids dashes; <name>-<name>
-            if "_" in self.name:
-                errors.append("Connection names cannot have dashes "
-                              f"in '{self.name}'")
             if "-" not in self.name:
                 errors.append("Connection names must have '-' "
                               "separating hub names")
