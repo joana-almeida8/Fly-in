@@ -26,16 +26,6 @@ class Metas(BaseModel):
 
         return color
 
-    @field_validator('zone', mode="after")
-    @classmethod
-    def zone_validator(cls, zone: Zone) -> Zone:
-        '''Post-pydantic validation for zone'''
-        # Zone names can use any valid characters but dashes and spaces
-        if " " in zone.value or "_" in zone.value:
-            raise ValueError(f"{zone.value} name must not have spaces/dashes")
-
-        return zone
-
 
 class LineParser(BaseModel):
     key: str

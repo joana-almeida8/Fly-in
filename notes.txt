@@ -104,3 +104,22 @@ pydatic (mode=before) --> recebe a linha e separa:
 
 Notes:
 - Check python's traceback
+
+
+ALGORITHM
+connections -> max_link (1)
+hubs -> max_drones, zones (blocked, restricted, priority, normal)
+
+class Connections():
+    def __innit__(self) -> None:
+        name = name
+        coordinates = (x, y)
+        zone = zone
+        max_drones = max_drones
+        color = color
+
+    def add_connection(self):
+        all_connections.append
+
+class Hubs():
+    def get_neighbours(self)

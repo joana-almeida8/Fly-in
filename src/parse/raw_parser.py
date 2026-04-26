@@ -34,7 +34,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
                                        "missing ':'"))
                 continue
 
-            key, val = line.split(':', 1)
+            key, val = line.split(':')
             key = key.lower()
 
             # nb_drones must be added first
@@ -52,6 +52,13 @@ def raw_parser(config_file: str) -> dict[str, str]:
                                                "must be an integer"))
                     continue
 
+            # There can only be one start and end hub
+            if key in ["start_hub", "end_hub", "nb_drones"]\
+                    and key in parsed_data:
+                invalid_keys.append(f" - Line {line_count}: "
+                                    f"There can only be one '{key}'")
+                continue
+
             # Append all invalid keys
             valid_keys = ["start_hub", "end_hub", "hub", "connection"]
             if key not in valid_keys:
@@ -59,11 +66,6 @@ def raw_parser(config_file: str) -> dict[str, str]:
                     invalid_keys.append("Unknown instruction(s) detected:")
                 invalid_keys.append(f" - Line {line_count}: '{key}'")
                 continue
-
-            # There can only be one start and end hub
-            if key in ["start_hub", "end_hub"] and key in parsed_data:
-                invalid_keys.append(f" - Line {line_count}: "
-                                    f"There can only be one '{key}'")
 
             try:
                 # Send lines with valid keys to pydantic validation
@@ -85,9 +87,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
 
                 else:
                     # Add hub and connection structure to parsed data
-                    if (key == "hub" and key not in parsed_data) or \
-                            (key == "connection" and key not in parsed_data):
-                        parsed_data.setdefault(key, [])
+                    parsed_data.setdefault(key, [])
  
                     # Append hub info
                     if key == "hub":

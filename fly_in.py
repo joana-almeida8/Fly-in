@@ -1,5 +1,5 @@
 import sys
-from parse.raw_parser import raw_parser
+from src.parse.raw_parser import raw_parser
 
 
 def fly_in() -> None:
