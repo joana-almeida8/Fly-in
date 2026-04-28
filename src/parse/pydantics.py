@@ -64,7 +64,7 @@ class LineParser(BaseModel):
         # Split values of key 'connection'
         if l_key == "connection":
             if len(parts) != 1:
-                raise ValueError("Connections cannot have coordinates")
+                raise ValueError("Connection has invalid format")
             return {
                 "key": l_key,
                 "name": parts[0],
