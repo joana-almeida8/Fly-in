@@ -1,15 +1,19 @@
+import os
+from typing import Any
 from pydantic import ValidationError
 from .pydantics import LineParser
 from .post_validations import post_validation
 
 
-def raw_parser(config_file: str) -> dict[str, str]:
+def raw_parser(config_file: str) -> dict[str, Any]:
     '''Parse through each line in input and return structured dict with data'''
 
     # Get raw_data from the input file
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f" - Missing Input file '{config_file}'")
     if not config_file.endswith(".txt"):
-        raise FileNotFoundError(f" - Input file '{config_file}' "
-                                "must have .txt format")
+        raise ValueError(f" - Input file '{config_file}' "
+                         "must have .txt format")
 
     parsed_data = {}
     invalid_keys = []
@@ -46,25 +50,26 @@ def raw_parser(config_file: str) -> dict[str, str]:
                 if key == "nb_drones":
                     try:
                         value = int(val.strip())
+                        if value <= 0:
+                            pydantic_errors.append((line_count, f"'{key}' value"
+                                                    " must be bigger than 0"))
                         parsed_data[key] = value
                     except ValueError:
                         pydantic_errors.append((line_count, f"'{key}' value "
-                                               "must be an integer"))
+                                               "must be a positive integer"))
                     continue
 
             # There can only be one start and end hub
             if key in ["start_hub", "end_hub", "nb_drones"]\
                     and key in parsed_data:
-                invalid_keys.append(f" - Line {line_count}: "
-                                    f"There can only be one '{key}'")
+                invalid_keys.append((line_count, " -  There can only be one "
+                                     f"'{key}'"))
                 continue
 
             # Append all invalid keys
             valid_keys = ["start_hub", "end_hub", "hub", "connection"]
             if key not in valid_keys:
-                if not invalid_keys:
-                    invalid_keys.append("Unknown instruction(s) detected:")
-                invalid_keys.append(f" - Line {line_count}: '{key}'")
+                invalid_keys.append((line_count, f" - Unknown key: '{key}'"))
                 continue
 
             try:
@@ -74,14 +79,14 @@ def raw_parser(config_file: str) -> dict[str, str]:
                 # Add existing metadata to metadata dict
                 metadata = {}
                 if data.metadata:
-                    metadata = data.metadata.model_dump(exclude_unset=True)
+                    metadata = data.metadata.model_dump()
 
                 # Add start and end hubs to parsed_data
                 if key == "start_hub" or key == "end_hub":
                     parsed_data[key] = {
                         'name': data.name,
                         'coordinates': (data.x, data.y),
-                        'metadata': metadata,
+                        **metadata,
                         'line': line_count
                     }
 
@@ -95,7 +100,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
                             {
                                 'name': data.name,
                                 'coordinates': (data.x, data.y),
-                                'metadata': metadata,
+                                **metadata,
                                 'line': line_count
                             }
                         )
@@ -104,7 +109,7 @@ def raw_parser(config_file: str) -> dict[str, str]:
                         parsed_data[key].append(
                             {
                                 'name': data.name,
-                                'metadata': metadata,
+                                **metadata,
                                 'line': line_count
                             }
                         )
@@ -117,18 +122,11 @@ def raw_parser(config_file: str) -> dict[str, str]:
                     pydantic_errors.append((line_count, error['msg']))
 
     # Raise any errors from pydantic validation
-    all_pyd_errors = []
-    if pydantic_errors:
-        pydantic_errors.sort()
-        all_pyd_errors.extend([f" - Line {l_count}: {msg}"
-                               for l_count, msg in pydantic_errors])
-    if invalid_keys:
-        if all_pyd_errors:
-            all_pyd_errors.append("\n")
-        all_pyd_errors.extend(invalid_keys)
-    if all_pyd_errors:
-        formatted_errors = '\n'.join(all_pyd_errors)
-        raise ValueError(f"{formatted_errors}")
+    all_errors = sorted(pydantic_errors + invalid_keys)
+    if all_errors:
+        formatted_errors = '\n'.join(f" - Line {l}: {msg}" 
+                                     for l, msg in all_errors)
+        raise ValueError(formatted_errors)
 
     post_validation(parsed_data)
 

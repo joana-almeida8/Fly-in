@@ -1,5 +1,7 @@
 import sys
 from src.parse.raw_parser import raw_parser
+from src.map.network import Network
+from src.pathfinding.algorithm import a_star
 
 
 def fly_in() -> None:
@@ -15,6 +17,20 @@ def fly_in() -> None:
     except (ValueError, KeyError, TypeError, FileNotFoundError) as error:
         print(f"\nParsing error(s) detected:\n{error}\n")
         sys.exit(1)
+
+    # Structure parsed_data
+    try:
+        network = Network.sort_data(data)
+    except ValueError as error:
+        print(f"{error}")
+        sys.exit(1)
+
+    # Execute algorithm
+    path = a_star(network)
+
+    # Display graphics
+
+    # Export file
 
 
 if __name__ == "__main__":

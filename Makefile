@@ -18,10 +18,12 @@ install:
 	$(PIP_INSTALL) mypy
 
 run:
-	$(PYTHON) fly_in.py config.txt
+	@input=$$(bash scripts/pick_input.sh); \
+	$(PYTHON) fly_in.py "$$input"
 
 debug:
-	$(PYTHON) -m pdb fly_in.py config.txt
+	@input=$$(bash scripts/pick_input.sh); \
+	$(PYTHON) -m pdb fly_in.py "$$input"
 
 clean:
 	$(RM) __pycache__

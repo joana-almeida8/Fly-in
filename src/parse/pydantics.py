@@ -11,7 +11,7 @@ class Zone(Enum):
 
 
 class Metas(BaseModel):
-    color: Optional[str] = Field(default="white")
+    colour: Optional[str] = Field(default=None)
     zone: Optional[Zone] = Field(default=Zone.NORMAL)
     max_drones: Optional[int] = Field(default=1, gt=0)
     max_link_capacity: Optional[int] = Field(default=1, gt=0)
