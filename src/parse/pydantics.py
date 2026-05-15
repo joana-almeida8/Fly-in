@@ -16,15 +16,15 @@ class Metas(BaseModel):
     max_drones: Optional[int] = Field(default=1, gt=0)
     max_link_capacity: Optional[int] = Field(default=1, gt=0)
 
-    @field_validator('color', mode="after")
+    @field_validator('colour', mode="after")
     @classmethod
-    def color_validator(cls, color: str) -> str:
+    def colour_validator(cls, colour: str) -> str:
         '''Post-pydantic validations for color'''
         # Check if value is a single word
-        if not color.isalpha():
-            raise ValueError(f"'{color}' must be a single word (letters only)")
+        if not colour.isalpha():
+            raise ValueError(f"'{colour}' must be a single word (letters only)")
 
-        return color
+        return colour
 
 
 class LineParser(BaseModel):

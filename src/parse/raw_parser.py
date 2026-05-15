@@ -81,8 +81,16 @@ def raw_parser(config_file: str) -> dict[str, Any]:
                 if data.metadata:
                     metadata = data.metadata.model_dump()
 
-                # Add start and end hubs to parsed_data
+                # Max drones in start and end hubs must be >= nb_drones
                 if key == "start_hub" or key == "end_hub":
+                    if metadata['max_drones'] == 1:
+                        metadata['max_drones'] = parsed_data['nb_drones']
+                    if metadata['max_drones'] < parsed_data['nb_drones']:
+                        pydantic_errors.append((line_count, "Start and End "
+                                                "max_drones must allow "
+                                                "nb_drones"))
+
+                    # Add start and end hubs to parsed_data
                     parsed_data[key] = {
                         'name': data.name,
                         'coordinates': (data.x, data.y),
