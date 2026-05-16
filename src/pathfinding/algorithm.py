@@ -58,8 +58,8 @@ ZONE_COST = {
 }
 
 
-def a_star(net: Network) -> set[Hub]:
-    '''A* Search Algorithm'''
+def dijkstra(net: Network) -> set[Hub]:
+    '''Dijkstra Algorithm'''
     assert net.start is not None
     visited: set[Hub] = set()      # closed list
     queue: list[Hub] = [net.start] # open list

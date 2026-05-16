@@ -1,7 +1,7 @@
 import sys
 from src.parse.raw_parser import raw_parser
 from src.map.network import Network
-from src.pathfinding.algorithm import a_star
+from src.pathfinding.algorithm import dijkstra
 
 
 def fly_in() -> None:
@@ -26,7 +26,7 @@ def fly_in() -> None:
         sys.exit(1)
 
     # Execute algorithm
-    path = a_star(network)
+    path = dijkstra(network)
 
     # Display graphics
 

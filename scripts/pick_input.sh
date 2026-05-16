@@ -14,4 +14,4 @@ select file in "${files[@]##*/}"; do
     [[ -n "$file" ]] && break
 done
 
-echo "$INPUT_DIR/folder/$file"
+echo "$INPUT_DIR/$folder/$file"

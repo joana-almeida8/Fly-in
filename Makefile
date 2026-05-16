@@ -10,12 +10,10 @@ MYPY_FLAGS = --warn-return-any --warn-unused-ignores \
 .PHONY: install run debug clean lint lint-strict destroy
 
 install:
+	@echo "Creating virtual environment and installing dependencies..."
 	python3 -m venv venv
 	$(PIP_INSTALL) --upgrade pip
-	$(PIP_INSTALL) pydantic
-	$(PIP_INSTALL) pygame-ce
-	$(PIP_INSTALL) flake8
-	$(PIP_INSTALL) mypy
+	$(PIP_INSTALL) pydantic pygame-ce flake8 mypy
 
 run:
 	@input=$$(bash scripts/pick_input.sh); \
@@ -26,21 +24,19 @@ debug:
 	$(PYTHON) -m pdb fly_in.py "$$input"
 
 clean:
-	$(RM) __pycache__
-	$(RM) src/parse/__pycache__
-	$(RM) .mypy_cache
+	@echo "Cleaning cache files..."
+	$(RM) __pycache__ src/__pycache__ src/*/__pycache__ .mypy_cache
 
 lint:
-	$(PYTHON) -m flake8 fly_in.py
-	$(PYTHON) -m flake8 src
-	$(PYTHON) -m mypy fly_in.py $(MYPY_FLAGS)
-	$(PYTHON) -m mypy src $(MYPY_FLAGS)
+	@echo "=== Running Linters ==="
+	$(PYTHON) -m flake8 fly_in.py src/
+	$(PYTHON) -m mypy fly_in.py  src/ $(MYPY_FLAGS)
 
 lint-strict:
-	$(PYTHON) -m flake8 fly_in.py
-	$(PYTHON) -m flake8 src
-	$(PYTHON) -m mypy --strict fly_in.py
-	$(PYTHON) -m mypy --strict src
+	@echo "=== Running Strict Linters ==="
+	$(PYTHON) -m flake8 fly_in.py src/
+	$(PYTHON) -m mypy --strict fly_in.py src/
 
 destroy: clean
+	@echo "Destroying virtual environment..."
 	$(RM) venv
