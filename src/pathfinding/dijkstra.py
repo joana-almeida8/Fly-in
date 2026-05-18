@@ -1,16 +1,11 @@
 from ..map.network import Network, Hub
-from typing import Any
 
 
-ZONE_COST = {
-    "priority": 1,
-    "normal": 1,
-    "restricted": 2,
-}
-
+ZONE_COST = {"priority": 1, "normal": 1, "restricted": 2}
+ZONE_PRIORITY = {"priority": 0, "normal": 1, "restricted": 2}
 
 def dijkstra(net: Network) -> list[Hub]:
-    '''Dijkstra Algorithm'''
+    '''Dijkstra Algorithm to return each Drone's best path'''
     assert net.start is not None
     heap = [(0, net.start)]
     visited: set[Hub] = set()      # closed list
@@ -24,7 +19,6 @@ def dijkstra(net: Network) -> list[Hub]:
         if current is net.end:
             path = get_path(visited)
             return path
-        
 
 
 def best_neighbour(current: Hub) -> Hub:

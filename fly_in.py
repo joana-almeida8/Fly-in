@@ -1,7 +1,7 @@
 import sys
 from src.parse.raw_parser import raw_parser
 from src.map.network import Network
-from src.pathfinding.algorithm import dijkstra
+from pathfinding.simulation import run_simulation
 
 
 def fly_in() -> None:
@@ -25,8 +25,8 @@ def fly_in() -> None:
         print(f"{error}")
         sys.exit(1)
 
-    # Execute algorithm
-    path = dijkstra(network)
+    # Run simulation
+    run_simulation(network)
 
     # Display graphics
 

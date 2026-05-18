@@ -5,7 +5,7 @@ from itertools import chain
 class Hub():
     '''Sort hub data, including start and end'''
     def __init__(self, raw_hub: dict):
-        '''Instantiate each data element of Hub'''
+        '''Initiate each data element of Hub'''
         self.name: str = raw_hub['name']
         self.coords: tuple = raw_hub['coordinates']
         self.zone: str = raw_hub['zone']
@@ -17,22 +17,14 @@ class Hub():
 class Connection():
     '''Instatiate each connection'''
     def __init__(self, raw_con: dict):
-        '''Instantiate each data element of Hub'''
+        '''Initiate each data element of Connection'''
         self.name: str = raw_con['name']
+        self.colour: str = raw_con['color']
         self.max_link: int = raw_con['max_link_capacity']
 
 
-class Drone():
-    def __init__(self, identifier: int, start: Hub):
-        self.id = f"D{identifier}"
-        self.current_hub = start
-        self.path = []
-        self.in_transit = False
-        self.transit_connection = None
-        self.turns_in_transit = 0
-
-
 class Network():
+    '''Manager class that stores instantiated Drones, Hubs and Connections'''
     def __init__(self) -> None:
         '''Initiate each graph element'''
         self.nb_drones: Optional[int] = None
@@ -55,9 +47,6 @@ class Network():
             network.hubs.append(Hub(hub))
         for connection in parsed_data.get('connection', []):
             network.connections.append(Connection(connection))
-        assert network.nb_drones is not None
-        network.drones = [Drone(i+1, network.start)
-                          for i in range(network.nb_drones)]
 
         # Fill neighbours lists for each hub
         network._get_neighbours()
